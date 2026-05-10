@@ -2,17 +2,24 @@ name: Test
 
 on:
   pull_request:
-  push:
     branches:
       - main
       - releases/*
 
+permissions: {}
+
 jobs:
   lint-test:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster
         uses: ./
@@ -24,9 +31,15 @@ jobs:
 
   test-with-custom-wait:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom wait
         uses: ./
@@ -41,9 +54,15 @@ jobs:
 
   test-with-custom-verbosity:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom verbosity
         uses: ./
@@ -57,9 +76,15 @@ jobs:
 
   test-with-custom-name:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom name
         uses: ./
@@ -73,9 +98,15 @@ jobs:
 
   test-with-install-only:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Only install kind without starting a cluster
         uses: ./
@@ -88,9 +119,15 @@ jobs:
 
   test-with-custom-kind-version:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom name
         uses: ./
@@ -105,11 +142,18 @@ jobs:
 
   test-with-custom-kubeconfig:
     runs-on: ubuntu-latest
+
     env:
       KUBECONFIG: "./kubeconfig"
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom kubeconfig
         uses: ./
@@ -123,9 +167,15 @@ jobs:
 
   test-with-custom-kubectl-version:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom name
         uses: ./
@@ -139,9 +189,15 @@ jobs:
 
   test-with-custom-node-image:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom name
         uses: ./
@@ -155,9 +211,15 @@ jobs:
 
   test-with-ignore-failed-clean:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create kind cluster with custom name
         uses: ./
@@ -171,31 +233,43 @@ jobs:
           kubectl get nodes
 
   test-without-registry:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout
-          uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    runs-on: ubuntu-latest
 
-        - name: Create kind cluster without registry
-          uses: ./
-          with:
-            registry: false
+    permissions:
+      contents: read
 
-        - name: Test
-          run: |
-            kubectl cluster-info
-            kubectl get storageclass standard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-            if [[ -n "$(docker ps --filter "name=kind-registry" --format "{{.ID}}")" ]]; then
-              echo "Registry is present"
-              exit 1
-            fi
+      - name: Create kind cluster without registry
+        uses: ./
+        with:
+          registry: false
+
+      - name: Test
+        run: |
+          kubectl cluster-info
+          kubectl get storageclass standard
+
+          if [[ -n "$(docker ps --filter "name=kind-registry" --format "{{.ID}}")" ]]; then
+            echo "Registry is present"
+            exit 1
+          fi
 
   test-with-registry:
       runs-on: ubuntu-latest
+
+      permissions:
+        contents: read
+
       steps:
         - name: Checkout
           uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          with:
+            persist-credentials: false
 
         - name: Create kind cluster with registry
           id: kind
@@ -226,9 +300,15 @@ jobs:
 
   test-with-registry-and-delete-enabled:
       runs-on: ubuntu-latest
+
+      permissions:
+        contents: read
+
       steps:
         - name: Checkout
           uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          with:
+            persist-credentials: false
 
         - name: Create kind cluster with registry and delete enabled
           id: kind
@@ -253,17 +333,23 @@ jobs:
 
             docker pull busybox
             docker tag busybox $LOCAL_REGISTRY/localbusybox
-            
+
             DIGEST=$(docker push $LOCAL_REGISTRY/localbusybox | grep -oE 'sha256:\w+')
-            
+
             curl -X DELETE $LOCAL_REGISTRY/v2/localbusybox/manifests/$DIGEST
             [[ "$(curl -Ls $LOCAL_REGISTRY/v2/localbusybox/tags/list | jq .tags)" == null ]]
 
   test-with-cloud-provider-enabled:
       runs-on: ubuntu-latest
+
+      permissions:
+        contents: read
+
       steps:
         - name: Checkout
           uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          with:
+            persist-credentials: false
 
         - name: Create kind cluster with cloud provider
           uses: ./
@@ -277,4 +363,4 @@ jobs:
             else
               echo "Cloud provider is not present."
               exit 1
-            fi        
+            fi
