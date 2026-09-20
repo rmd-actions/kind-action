@@ -6,9 +6,12 @@ branding:
   icon: box
 inputs:
   version:
-    description: "The kind version to use (default: v0.31.0)"
+    description: "The kind version to use (default: v0.33.0)"
     required: false
-    default: "v0.31.0"
+    default: "v0.33.0"
+  version_file:
+    description: "The path to a file containing the kind version to use (asdf '.tool-versions' or a plain version file; the version is used as-is, e.g. v0.33.0). Takes precedence over 'version' when set."
+    required: false
   config:
     description: "The path to the kind config file"
     required: false
@@ -31,9 +34,9 @@ inputs:
     default: "0"
     required: false
   kubectl_version:
-    description: "The kubectl version to use (default: v1.35.0)"
+    description: "The kubectl version to use (default: v1.37.0)"
     required: false
-    default: "v1.35.0"
+    default: "v1.37.0"
   registry:
     description: "Whether to configure an insecure local registry (default: false)"
     required: false

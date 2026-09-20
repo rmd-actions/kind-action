@@ -15,13 +15,14 @@ For more information, reference the GitHub Help Documentation for [Creating a wo
 
 For more information on inputs, see the [API Documentation](https://developer.github.com/v3/repos/releases/#input)
 
-- `version`: The kind version to use (default: `v0.31.0`)
+- `version`: The kind version to use (default: `v0.33.0`)
+- `version_file`: The path to a file containing the kind version to use. Supports the asdf [`.tool-versions`](https://asdf-vm.com/manage/configuration.html#tool-versions) layout (the `kind` entry) and plain version files. The version is used as-is, so include the leading `v` (for example `kind v0.33.0`). Takes precedence over `version` when set.
 - `config`: The path to the kind config file
 - `node_image`: The Docker image for the cluster nodes
 - `cluster_name`: The name of the cluster to create (default: `chart-testing`)
 - `wait`: The duration to wait for the control plane to become ready (default: `60s`)
 - `verbosity`: info log verbosity, higher value produces more output
-- `kubectl_version`: The kubectl version to use (default: `v1.35.0`)
+- `kubectl_version`: The kubectl version to use (default: `v1.37.0`)
 - `registry`: Whether to configure an insecure local registry (default: `false`)
 - `registry_image`: The registry image to use (default: `registry:2`)
 - `registry_name`: The registry name to use (default: `kind-registry`)
