@@ -29,6 +29,48 @@ jobs:
           kubectl cluster-info
           kubectl get storageclass standard
 
+  test-with-job-container:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+      options: --volume /var/run/docker.sock:/var/run/docker.sock
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Install Docker CLI
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl docker.io git
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify Docker access and job network
+        env:
+          KIND_EXPERIMENTAL_DOCKER_NETWORK: ${{ job.container.network }}
+        run: |
+          test -S /var/run/docker.sock
+          test -n "$KIND_EXPERIMENTAL_DOCKER_NETWORK"
+          docker info
+
+      - name: Create kind cluster in the job container
+        uses: ./
+        env:
+          KIND_EXPERIMENTAL_DOCKER_NETWORK: ${{ job.container.network }}
+        with:
+          cluster_name: kind
+          config: ./testdata/kind-job-container-config.yaml
+
+      - name: Verify cluster access from the job container
+        run: |
+          kubectl config set-cluster kind-kind --server=https://kind-control-plane:6443
+          kubectl cluster-info
+          kubectl get nodes
+
   test-with-custom-wait:
     runs-on: ubuntu-latest
 
@@ -137,6 +179,58 @@ jobs:
       - name: Test
         run: |
           kind version
+          kubectl cluster-info
+          kubectl get nodes
+
+  test-with-version-file:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create version file
+        run: echo "kind v0.23.0" > .tool-versions
+
+      - name: Create kind cluster from version file
+        uses: ./
+        with:
+          version_file: ".tool-versions"
+
+      - name: Test
+        run: |
+          kind version | grep "v0.23.0"
+          kubectl cluster-info
+          kubectl get nodes
+
+  test-with-plain-version-file:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create version file
+        run: echo "v0.23.0" > .kind_version
+
+      - name: Create kind cluster from a plain version file
+        uses: ./
+        with:
+          version_file: ".kind_version"
+
+      - name: Test
+        run: |
+          kind version | grep "v0.23.0"
           kubectl cluster-info
           kubectl get nodes
 
@@ -282,6 +376,7 @@ jobs:
         - name: Test
           env:
             LOCAL_REGISTRY: ${{ steps.kind.outputs.LOCAL_REGISTRY }}
+            LOCAL_REGISTRY_HOST: localhost:5001
           run: |
             kubectl cluster-info
             kubectl get storageclass standard
@@ -292,8 +387,8 @@ jobs:
             fi
 
             docker pull busybox
-            docker tag busybox $LOCAL_REGISTRY/localbusybox
-            docker push $LOCAL_REGISTRY/localbusybox
+            docker tag busybox $LOCAL_REGISTRY_HOST/localbusybox
+            docker push $LOCAL_REGISTRY_HOST/localbusybox
 
             kubectl create job test --image=$LOCAL_REGISTRY/localbusybox
             kubectl wait --for=condition=complete --timeout=30s job/test
@@ -322,6 +417,7 @@ jobs:
         - name: Test
           env:
             LOCAL_REGISTRY: ${{ steps.kind.outputs.LOCAL_REGISTRY }}
+            LOCAL_REGISTRY_HOST: localhost:5001
           run: |
             kubectl cluster-info
             kubectl get storageclass standard
@@ -332,15 +428,26 @@ jobs:
             fi
 
             docker pull busybox
-            docker tag busybox $LOCAL_REGISTRY/localbusybox
+            docker tag busybox $LOCAL_REGISTRY_HOST/localbusybox
 
-            DIGEST=$(docker push $LOCAL_REGISTRY/localbusybox | grep -oE 'sha256:\w+')
+            PUSH_OUTPUT=$(docker push "$LOCAL_REGISTRY_HOST/localbusybox" 2>&1)
+            printf '%s\n' "$PUSH_OUTPUT"
+            DIGEST=$(printf '%s\n' "$PUSH_OUTPUT" |
+              sed -nE 's/.*latest: digest: (sha256:[[:xdigit:]]+).*/\1/p')
+            if [[ -z "${DIGEST}" ]]; then
+              echo "Registry did not return the pushed manifest digest" >&2
+              exit 1
+            fi
 
-            curl -X DELETE $LOCAL_REGISTRY/v2/localbusybox/manifests/$DIGEST
-            [[ "$(curl -Ls $LOCAL_REGISTRY/v2/localbusybox/tags/list | jq .tags)" == null ]]
+            curl -X DELETE "http://${LOCAL_REGISTRY_HOST}/v2/localbusybox/manifests/${DIGEST}"
+            [[ "$(curl -Ls "http://${LOCAL_REGISTRY_HOST}/v2/localbusybox/tags/list" | jq .tags)" == null ]]
 
   test-with-cloud-provider-enabled:
-      runs-on: ubuntu-latest
+      strategy:
+        matrix:
+          runner: [ubuntu-latest, ubuntu-24.04-arm]
+
+      runs-on: ${{ matrix.runner }}
 
       permissions:
         contents: read
@@ -364,3 +471,62 @@ jobs:
               echo "Cloud provider is not present."
               exit 1
             fi
+
+            case "$(uname -m)" in
+              x86_64) expected_arch="x86-64" ;;
+              aarch64) expected_arch="ARM aarch64" ;;
+            esac
+            if file -L /usr/local/bin/cloud-provider-kind | grep -q "${expected_arch}"; then
+              echo "Cloud provider binary matches the runner architecture."
+            else
+              file -L /usr/local/bin/cloud-provider-kind
+              echo "Cloud provider binary does not match the runner architecture."
+              exit 1
+            fi
+
+  test-install-only-macos:
+    runs-on: macos-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install kind and kubectl without creating a cluster
+        uses: ./
+        with:
+          install_only: true
+
+      - name: Verify kind and kubectl are installed
+        run: |
+          kind version
+          kubectl version --client=true
+
+  test-install-only-windows:
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install kind and kubectl without creating a cluster
+        uses: ./
+        with:
+          install_only: true
+          # No version set on purpose: this exercises the documented default
+          # path (v0.33.0) on Windows.
+
+      - name: Verify kind and kubectl are installed
+        shell: bash
+        run: |
+          kind version
+          kubectl version --client=true
